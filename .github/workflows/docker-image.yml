@@ -1,0 +1,57 @@
+# Developed for Anunzio International by Anzul Aqeel. Contact +971545822608 or +971585515742. Linkedin Profile: linkedin.com/in/anzulaqeel
+
+name: Docker Image CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout The Repository
+      uses: actions/checkout@v3
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      # Only attempt login if secrets are available
+      if: github.event_name != 'pull_request' && env.DOCKER_USERNAME != ''
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and Test Docker Image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: false # Set to true if you want to push and have configured secrets
+        tags: user/app:latest
+        outputs: type=docker,dest=/tmp/myimage.tar
+
+    - name: Load image
+      run: |
+        docker load --input /tmp/myimage.tar
+        docker image ls -a
+
+    # Optional: Run simple test on the container
+    - name: Run container and verify
+      run: |
+        docker run -d -p 3000:3000 --name test-container user/app:latest
+        sleep 5
+        curl --fail http://localhost:3000 || exit 1
+        docker stop test-container
+
+# Developed for Anunzio International by Anzul Aqeel. Contact +971545822608 or +971585515742. Linkedin Profile: linkedin.com/in/anzulaqeel
